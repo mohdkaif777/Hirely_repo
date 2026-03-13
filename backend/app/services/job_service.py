@@ -5,6 +5,7 @@ from fastapi import HTTPException, status
 
 from app.database import get_database
 from app.models.job_model import job_entity
+from app.services import ai_client
 
 
 async def create_job(recruiter_id: str, data: dict) -> dict:
@@ -17,7 +18,24 @@ async def create_job(recruiter_id: str, data: dict) -> dict:
     }
     result = await db.jobs.insert_one(job_doc)
     job_doc["_id"] = result.inserted_id
-    return job_entity(job_doc)
+    job = job_entity(job_doc)
+
+    # Phase 4: Auto-generate AI vector and find matches (fire-and-forget)
+    try:
+        job_id = job["id"]
+        await ai_client.create_job_vector(job_id, data)
+        matches = await ai_client.find_matches_for_job(job_id, data)
+        # Store matches in MongoDB
+        if matches:
+            match_docs = [
+                {"job_id": job_id, "candidate_id": m["candidate_id"], "score": m["score"]}
+                for m in matches
+            ]
+            await db.matches.insert_many(match_docs)
+    except Exception as e:
+        print(f"[AI Integration] Job vector/match generation failed (non-blocking): {e}")
+
+    return job
 
 
 async def get_all_jobs(skip: int = 0, limit: int = 20) -> dict:

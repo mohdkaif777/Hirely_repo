@@ -24,6 +24,10 @@ async def connect_to_mongo():
     await db.conversations.create_index("job_id")
     await db.messages.create_index("conversation_id")
     
+    # Phase 4: AI Matching indexes
+    await db.matches.create_index([("job_id", 1), ("candidate_id", 1)])
+    await db.matches.create_index("score")
+    
     print(f"Connected to MongoDB: {settings.DATABASE_NAME}")
 
 

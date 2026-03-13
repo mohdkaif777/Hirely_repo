@@ -5,6 +5,7 @@ from fastapi import HTTPException, status
 
 from app.database import get_database
 from app.models.profile_model import job_seeker_profile_entity
+from app.services import ai_client
 
 
 async def create_job_seeker_profile(user_id: str, data: dict) -> dict:
@@ -24,7 +25,15 @@ async def create_job_seeker_profile(user_id: str, data: dict) -> dict:
     }
     result = await db.job_seeker_profiles.insert_one(profile_doc)
     profile_doc["_id"] = result.inserted_id
-    return job_seeker_profile_entity(profile_doc)
+    profile = job_seeker_profile_entity(profile_doc)
+
+    # Phase 4: Auto-generate AI vector (fire-and-forget)
+    try:
+        await ai_client.create_candidate_vector(user_id, data)
+    except Exception as e:
+        print(f"[AI Integration] Candidate vector generation failed (non-blocking): {e}")
+
+    return profile
 
 
 async def get_job_seeker_profile(user_id: str) -> dict:
@@ -58,4 +67,13 @@ async def update_job_seeker_profile(user_id: str, data: dict) -> dict:
             status_code=status.HTTP_404_NOT_FOUND,
             detail="Profile not found",
         )
-    return job_seeker_profile_entity(result)
+    profile = job_seeker_profile_entity(result)
+
+    # Phase 4: Re-generate AI vector on profile update (fire-and-forget)
+    try:
+        merged = {k: v for k, v in result.items() if k not in ("_id", "user_id", "created_at")}
+        await ai_client.create_candidate_vector(user_id, merged)
+    except Exception as e:
+        print(f"[AI Integration] Candidate vector update failed (non-blocking): {e}")
+
+    return profile
