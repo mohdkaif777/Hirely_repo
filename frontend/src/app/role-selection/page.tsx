@@ -47,7 +47,11 @@ export default function RoleSelectionPage() {
     try {
       await setRole(token, selected);
       await refreshUser();
-      router.push("/");
+      if (selected === "recruiter") {
+        router.push("/dashboard/my-jobs");
+      } else {
+        router.push("/dashboard/jobs");
+      }
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to set role");
     } finally {

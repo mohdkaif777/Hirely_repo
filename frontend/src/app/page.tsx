@@ -24,7 +24,7 @@ export default function LandingPage() {
             </div>
             <div className="flex items-center gap-4">
               {user ? (
-                <Link href="/role-selection">
+                <Link href="/dashboard">
                   <Button>Dashboard</Button>
                 </Link>
               ) : (

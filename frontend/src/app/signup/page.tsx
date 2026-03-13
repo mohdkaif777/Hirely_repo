@@ -14,10 +14,14 @@ import {
 } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { signup } from "@/lib/api";
+import { signup, authGoogle } from "@/lib/api";
+import { useAuth } from "@/lib/auth-context";
+import { GoogleLogin } from "@react-oauth/google";
+import { jwtDecode } from "jwt-decode";
 
 export default function SignupPage() {
   const router = useRouter();
+  const { setAuth } = useAuth();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
@@ -42,8 +46,29 @@ export default function SignupPage() {
     try {
       await signup(email, password);
       router.push("/login?registered=true");
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Signup failed");
+    } catch (err: any) {
+      setError(typeof err.message === "object" ? JSON.stringify(err.message) : (err.message || "Signup failed"));
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  async function handleGoogleSuccess(credentialResponse: any) {
+    if (!credentialResponse.credential) return;
+    setError("");
+    setLoading(true);
+    try {
+      const decoded: any = jwtDecode(credentialResponse.credential);
+      const data = await authGoogle(decoded.email, decoded.name, decoded.picture);
+      setAuth(data.access_token, data.user);
+
+      if (!data.user.role) {
+        router.push("/role-selection");
+      } else {
+        router.push("/dashboard");
+      }
+    } catch (err: any) {
+      setError(typeof err.message === "object" ? JSON.stringify(err.message) : (err.message || "Google authentication failed"));
     } finally {
       setLoading(false);
     }
@@ -106,7 +131,24 @@ export default function SignupPage() {
             <Button type="submit" className="w-full" disabled={loading}>
               {loading ? "Creating account..." : "Sign Up"}
             </Button>
-            <p className="text-sm text-muted-foreground text-center">
+
+            <div className="relative my-2 text-center text-sm after:absolute after:inset-0 after:top-1/2 after:z-0 after:flex after:items-center after:border-t after:border-border">
+              <span className="relative z-10 bg-card px-2 text-muted-foreground">
+                Or continue with
+              </span>
+            </div>
+
+            <div className="flex justify-center w-full">
+              <GoogleLogin
+                onSuccess={handleGoogleSuccess}
+                onError={() => {
+                  setError("Google authentication failed");
+                }}
+                useOneTap
+              />
+            </div>
+
+            <p className="text-sm text-muted-foreground text-center mt-2">
               Already have an account?{" "}
               <Link href="/login" className="text-primary underline">
                 Log in

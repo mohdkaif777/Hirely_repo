@@ -14,8 +14,10 @@ import {
 } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { login } from "@/lib/api";
+import { login, authGoogle } from "@/lib/api";
 import { useAuth } from "@/lib/auth-context";
+import { GoogleLogin } from "@react-oauth/google";
+import { jwtDecode } from "jwt-decode";
 
 function LoginForm() {
   const router = useRouter();
@@ -39,10 +41,31 @@ function LoginForm() {
       if (!data.user.role) {
         router.push("/role-selection");
       } else {
-        router.push("/");
+        router.push("/dashboard");
       }
     } catch (err) {
       setError(err instanceof Error ? err.message : "Login failed");
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  async function handleGoogleSuccess(credentialResponse: any) {
+    if (!credentialResponse.credential) return;
+    setError("");
+    setLoading(true);
+    try {
+      const decoded: any = jwtDecode(credentialResponse.credential);
+      const data = await authGoogle(decoded.email, decoded.name, decoded.picture);
+      setAuth(data.access_token, data.user);
+
+      if (!data.user.role) {
+        router.push("/role-selection");
+      } else {
+        router.push("/dashboard");
+      }
+    } catch (err: any) {
+      setError(typeof err.message === "object" ? JSON.stringify(err.message) : (err.message || "Google authentication failed"));
     } finally {
       setLoading(false);
     }
@@ -98,7 +121,24 @@ function LoginForm() {
           <Button type="submit" className="w-full" disabled={loading}>
             {loading ? "Signing in..." : "Sign In"}
           </Button>
-          <p className="text-sm text-muted-foreground text-center">
+
+          <div className="relative my-2 text-center text-sm after:absolute after:inset-0 after:top-1/2 after:z-0 after:flex after:items-center after:border-t after:border-border">
+            <span className="relative z-10 bg-card px-2 text-muted-foreground">
+              Or continue with
+            </span>
+          </div>
+
+          <div className="flex justify-center w-full">
+            <GoogleLogin
+              onSuccess={handleGoogleSuccess}
+              onError={() => {
+                setError("Google authentication failed block");
+              }}
+              useOneTap
+            />
+          </div>
+
+          <p className="text-sm text-muted-foreground text-center mt-2">
             Don&apos;t have an account?{" "}
             <Link href="/signup" className="text-primary underline">
               Sign up
