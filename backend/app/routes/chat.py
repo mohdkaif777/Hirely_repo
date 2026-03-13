@@ -6,6 +6,7 @@ from app.schemas.chat_schema import ConversationResponse, MessageResponse, Messa
 from app.services.auth_service import get_current_user
 from app.services.chat_service import get_user_conversations, get_messages, save_message, get_or_create_conversation
 from app.services.job_service import get_job_by_id
+from app.services.recruiter_agent_service import trigger_recruiter_agent
 
 router = APIRouter(prefix="/chat", tags=["Chat"])
 security = HTTPBearer()
@@ -90,6 +91,14 @@ async def websocket_endpoint(websocket: WebSocket, conversation_id: str):
                 sender_type=data.get("sender_type", "unknown"),
                 message=data.get("text", "")
             )
+
+            # Trigger recruiter agent on candidate message (non-blocking)
+            if data.get("sender_type") in ("job_seeker", "candidate"):
+                import asyncio
+
+                asyncio.create_task(
+                    trigger_recruiter_agent(conversation_id, reason="candidate_message")
+                )
             
             # Broadcast the full MessageResponse back to everyone in this room
             await manager.broadcast_to_conversation(conversation_id, saved_msg)

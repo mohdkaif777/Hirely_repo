@@ -110,6 +110,7 @@ export default function JobSeekerProfilePage() {
   // Visual Mode (Decent UI)
   if (!isEditing && hasProfile) {
     const skillsArray = formData.skills.split(",").map((s) => s.trim()).filter(Boolean);
+    const uniqueSkills = [...new Set(skillsArray)];
     const rolesArray = formData.preferred_roles.split(",").map((s) => s.trim()).filter(Boolean);
 
     return (
@@ -146,7 +147,7 @@ export default function JobSeekerProfilePage() {
               <h3 className="font-semibold text-sm">Top Skills</h3>
               <div className="flex flex-wrap gap-2">
                 {skillsArray.length > 0 ? (
-                  skillsArray.map((skill) => (
+                  uniqueSkills.map((skill: string) => (
                     <Badge key={skill} variant="secondary" className="px-3 py-1 bg-muted">
                       {skill}
                     </Badge>

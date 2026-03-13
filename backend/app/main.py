@@ -9,6 +9,7 @@ from app.routes.profile import router as profile_router
 from app.routes.recruiter import router as recruiter_router
 from app.routes.jobs import router as jobs_router
 from app.routes.chat import router as chat_router
+from app.routes.agent import router as agent_router
 
 
 @asynccontextmanager
@@ -44,6 +45,7 @@ app.include_router(profile_router, prefix="/api")
 app.include_router(recruiter_router, prefix="/api")
 app.include_router(jobs_router, prefix="/api")
 app.include_router(chat_router, prefix="/api")
+app.include_router(agent_router, prefix="/api")
 
 
 @app.get("/")

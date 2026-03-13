@@ -3,6 +3,7 @@ from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 
 from app.schemas.user_schema import (
     TokenResponse,
+    UserGoogleLogin,
     UserLogin,
     UserResponse,
     UserRoleUpdate,

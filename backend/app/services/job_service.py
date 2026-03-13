@@ -6,6 +6,8 @@ from fastapi import HTTPException, status
 from app.database import get_database
 from app.models.job_model import job_entity
 from app.services import ai_client
+from app.services.chat_service import get_or_create_conversation
+from app.services.recruiter_agent_service import trigger_recruiter_agent
 
 
 async def create_job(recruiter_id: str, data: dict) -> dict:
@@ -32,6 +34,22 @@ async def create_job(recruiter_id: str, data: dict) -> dict:
                 for m in matches
             ]
             await db.matches.insert_many(match_docs)
+
+            # Trigger recruiter agent for each match (non-blocking)
+            import asyncio
+
+            for m in matches:
+                try:
+                    conv = await get_or_create_conversation(
+                        job_id=job_id,
+                        job_seeker_id=m["candidate_id"],
+                        recruiter_id=recruiter_id,
+                    )
+                    asyncio.create_task(
+                        trigger_recruiter_agent(conv["id"], reason="match_created")
+                    )
+                except Exception as e:
+                    print(f"[Agent Trigger] match_created trigger failed: {e}")
     except Exception as e:
         print(f"[AI Integration] Job vector/match generation failed (non-blocking): {e}")
 

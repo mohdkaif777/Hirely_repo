@@ -13,11 +13,13 @@ from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 
 from app.services import embedding_service, ner_service, faiss_service, matching_service
+from app.services import llm_service
 from app.models.schemas import (
     CandidateVectorRequest,
     JobVectorRequest,
     FindMatchesRequest,
 )
+from app.models.recruiter_agent_schemas import RecruiterAgentGenerateRequest
 
 
 @asynccontextmanager
@@ -28,6 +30,10 @@ async def lifespan(app: FastAPI):
     print("=" * 50)
     embedding_service.load_model()
     ner_service.load_model()
+    try:
+        llm_service.load_model("mistralai/Mistral-7B-Instruct-v0.2")
+    except Exception as e:
+        print(f"LLM model load failed (continuing): {e}")
     faiss_service.load_indexes()
     print("=" * 50)
     print("ALL MODELS LOADED SUCCESSFULLY")
@@ -81,6 +87,21 @@ async def create_candidate_vector(req: CandidateVectorRequest):
         profile = req.model_dump(exclude={"candidate_id"})
         result = matching_service.create_candidate_vector(req.candidate_id, profile)
         return result
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.post("/recruiter-agent/generate")
+async def recruiter_agent_generate(req: RecruiterAgentGenerateRequest):
+    try:
+        assistant = llm_service.generate(
+            model_id=req.model,
+            messages=req.messages,
+            tools=req.tools,
+            temperature=req.temperature or 0.3,
+            max_new_tokens=req.max_new_tokens or 512,
+        )
+        return {"assistant": assistant}
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
