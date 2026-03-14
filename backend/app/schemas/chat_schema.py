@@ -10,6 +10,7 @@ class MessageResponse(BaseModel):
     conversation_id: str
     sender_type: str
     message: str
+    metadata: Optional[dict] = None
     created_at: str
 
 class ConversationResponse(BaseModel):
@@ -17,6 +18,10 @@ class ConversationResponse(BaseModel):
     job_id: str
     job_seeker_id: str
     recruiter_id: str
+    agent_status: Optional[str] = "new"
+    match_score: Optional[float] = None
+    match_rank: Optional[int] = None
+    match_status: Optional[str] = None
     created_at: str
     # UI helper fields we'll inject via standard aggregations
     job_title: Optional[str] = None

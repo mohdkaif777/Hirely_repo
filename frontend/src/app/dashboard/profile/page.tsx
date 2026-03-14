@@ -36,6 +36,9 @@ export default function JobSeekerProfilePage() {
     preferred_roles: "",
     expected_salary: "",
     resume_url: "",
+    education: "",
+    projects: [] as Array<{ title: string; description: string; tech_stack: string; project_url: string }>,
+    job_type_preference: "",
   });
 
   useEffect(() => {
@@ -55,6 +58,9 @@ export default function JobSeekerProfilePage() {
             preferred_roles: (data.preferred_roles || []).join(", "),
             expected_salary: data.expected_salary || "",
             resume_url: data.resume_url || "",
+            education: data.education || "",
+            projects: data.projects || [],
+            job_type_preference: data.job_type_preference || "",
           });
         }
       } catch (err: any) {
@@ -73,6 +79,11 @@ export default function JobSeekerProfilePage() {
     setFormData((prev) => ({ ...prev, [name]: value }));
   };
 
+  const handleSelectChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
+    const { name, value } = e.target;
+    setFormData((prev) => ({ ...prev, [name]: value }));
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!token) return;
@@ -85,6 +96,12 @@ export default function JobSeekerProfilePage() {
       age: formData.age ? parseInt(formData.age, 10) : undefined,
       skills: formData.skills.split(",").map((s) => s.trim()).filter(Boolean),
       preferred_roles: formData.preferred_roles.split(",").map((s) => s.trim()).filter(Boolean),
+      projects: formData.projects.map(p => ({
+        title: p.title.trim(),
+        description: p.description.trim(),
+        tech_stack: p.tech_stack.split(",").map(t => t.trim()).filter(Boolean),
+        project_url: p.project_url.trim(),
+      })).filter(p => p.title || p.description),
     };
 
     try {
@@ -156,6 +173,48 @@ export default function JobSeekerProfilePage() {
                   <span className="text-muted-foreground text-sm">No skills listed.</span>
                 )}
               </div>
+            </div>
+
+            <div className="space-y-2">
+              <h3 className="font-semibold text-sm">Education</h3>
+              <p className="text-muted-foreground text-sm leading-relaxed whitespace-pre-wrap">
+                {formData.education || "No education listed."}
+              </p>
+            </div>
+
+            <div className="space-y-3">
+              <h3 className="font-semibold text-sm">Projects</h3>
+              {formData.projects.length > 0 ? (
+                <div className="space-y-3">
+                  {formData.projects.map((proj, idx) => (
+                    <div key={idx} className="border rounded p-3 bg-muted/20">
+                      <h4 className="font-medium text-sm">{proj.title}</h4>
+                      <p className="text-xs text-muted-foreground mt-1">{proj.description}</p>
+                      {proj.tech_stack && (
+                        <div className="flex flex-wrap gap-1 mt-2">
+                          {proj.tech_stack.split(",").map((tech, i) => (
+                            <Badge key={i} variant="outline" className="text-xs px-1 py-0">
+                              {tech.trim()}
+                            </Badge>
+                          ))}
+                        </div>
+                      )}
+                      {proj.project_url && (
+                        <a href={proj.project_url} target="_blank" rel="noreferrer" className="text-xs text-primary hover:underline mt-1 block">
+                          View Project →
+                        </a>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <span className="text-muted-foreground text-sm">No projects listed.</span>
+              )}
+            </div>
+
+            <div className="space-y-2">
+              <h3 className="font-semibold text-sm">Job Type Preference</h3>
+              <p className="text-muted-foreground text-sm">{formData.job_type_preference || "Not specified"}</p>
             </div>
 
             <div className="grid grid-cols-2 gap-4 pt-4 border-t">
@@ -239,6 +298,22 @@ export default function JobSeekerProfilePage() {
               <Textarea id="experience" name="experience" placeholder="Briefly describe your work experience..." value={formData.experience} onChange={handleChange} />
             </div>
 
+            <div className="space-y-2">
+              <Label htmlFor="education">Education</Label>
+              <Textarea id="education" name="education" placeholder="Your education background..." value={formData.education} onChange={handleChange} />
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="job_type_preference">Job Type Preference</Label>
+              <select id="job_type_preference" name="job_type_preference" value={formData.job_type_preference} onChange={handleSelectChange} className="w-full border rounded px-3 py-2 text-sm">
+                <option value="">Select...</option>
+                <option value="Full Time">Full Time</option>
+                <option value="Part Time">Part Time</option>
+                <option value="Internship">Internship</option>
+                <option value="Remote">Remote</option>
+              </select>
+            </div>
+
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
                 <Label htmlFor="preferred_roles">Preferred Roles (comma separated)</Label>
@@ -248,6 +323,53 @@ export default function JobSeekerProfilePage() {
                 <Label htmlFor="expected_salary">Expected Salary</Label>
                 <Input id="expected_salary" name="expected_salary" placeholder="$100k, 50k EUR..." value={formData.expected_salary} onChange={handleChange} />
               </div>
+            </div>
+
+            <div className="space-y-4">
+              <div className="flex justify-between items-center">
+                <Label>Projects</Label>
+                <Button type="button" variant="outline" size="sm" onClick={() => setFormData(prev => ({
+                  ...prev,
+                  projects: [...prev.projects, { title: "", description: "", tech_stack: "", project_url: "" }]
+                }))}>
+                  + Add Project
+                </Button>
+              </div>
+              {formData.projects.map((proj, idx) => (
+                <div key={idx} className="border rounded p-3 space-y-2">
+                  <div className="flex justify-between items-center">
+                    <h4 className="text-sm font-medium">Project {idx + 1}</h4>
+                    {formData.projects.length > 1 && (
+                      <Button type="button" variant="ghost" size="sm" onClick={() => setFormData(prev => ({
+                        ...prev,
+                        projects: prev.projects.filter((_, i) => i !== idx)
+                      }))}>
+                        Remove
+                      </Button>
+                    )}
+                  </div>
+                  <Input placeholder="Title" value={proj.title} onChange={e => {
+                    const updated = [...formData.projects];
+                    updated[idx].title = e.target.value;
+                    setFormData(prev => ({ ...prev, projects: updated }));
+                  }} />
+                  <Textarea placeholder="Description" value={proj.description} onChange={e => {
+                    const updated = [...formData.projects];
+                    updated[idx].description = e.target.value;
+                    setFormData(prev => ({ ...prev, projects: updated }));
+                  }} />
+                  <Input placeholder="Tech stack (comma separated)" value={proj.tech_stack} onChange={e => {
+                    const updated = [...formData.projects];
+                    updated[idx].tech_stack = e.target.value;
+                    setFormData(prev => ({ ...prev, projects: updated }));
+                  }} />
+                  <Input placeholder="Project URL (optional)" value={proj.project_url} onChange={e => {
+                    const updated = [...formData.projects];
+                    updated[idx].project_url = e.target.value;
+                    setFormData(prev => ({ ...prev, projects: updated }));
+                  }} />
+                </div>
+              ))}
             </div>
 
             <div className="space-y-2">

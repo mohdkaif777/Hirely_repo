@@ -34,6 +34,9 @@ async def connect_to_mongo():
     await db.agent_events.create_index("conversation_id")
     await db.agent_events.create_index("created_at")
     await db.calendar_tokens.create_index("owner", unique=True)
+    # New workflow indexes
+    await db.screening_results.create_index("conversation_id")
+    await db.recruiter_summaries.create_index("conversation_id")
     
     print(f"Connected to MongoDB: {settings.DATABASE_NAME}")
 

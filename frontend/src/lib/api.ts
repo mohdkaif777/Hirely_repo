@@ -134,6 +134,9 @@ export async function createJob(token: string, data: {
   salary_range?: string;
   experience_required?: string;
   location?: string;
+  job_type?: string;
+  project_keywords?: string[];
+  number_of_vacancies?: number;
 }) {
   return fetchAPI("/jobs/create", {
     method: "POST",
@@ -169,3 +172,20 @@ export async function startConversation(token: string, jobId: string) {
     token,
   });
 }
+
+// Vacancy Management
+export async function rejectCandidate(token: string, jobId: string, candidateId: string, reason = "screening_failed") {
+  return fetchAPI(`/jobs/${jobId}/reject-candidate`, {
+    method: "POST",
+    token,
+    body: JSON.stringify({ candidate_id: candidateId, reason }),
+  });
+}
+
+export async function promoteWaiting(token: string, jobId: string) {
+  return fetchAPI(`/jobs/${jobId}/promote-waiting`, {
+    method: "POST",
+    token,
+  });
+}
+

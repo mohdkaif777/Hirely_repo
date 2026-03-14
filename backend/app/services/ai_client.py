@@ -33,9 +33,14 @@ async def create_job_vector(job_id: str, job: dict) -> dict:
         return {"status": "error", "detail": str(e)}
 
 
-async def find_matches_for_job(job_id: str, job_data: dict, top_k: int = 10) -> list[dict]:
-    """Call AI service to find candidate matches for a job."""
-    payload = {"job_id": job_id, "job_data": job_data, "top_k": top_k}
+async def find_matches_for_job(job_id: str, job_data: dict, candidate_profiles: list[dict], top_k: int = 10) -> list[dict]:
+    """Call AI service to find candidate matches for a job using hybrid scoring."""
+    payload = {
+        "job_id": job_id,
+        "job_data": job_data,
+        "candidate_profiles": candidate_profiles,
+        "top_k": top_k
+    }
     try:
         async with httpx.AsyncClient(timeout=60.0) as client:
             resp = await client.post(f"{AI_SERVICE_URL}/find-matches", json=payload)

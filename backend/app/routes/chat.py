@@ -17,10 +17,24 @@ async def list_conversations(
     credentials: HTTPAuthorizationCredentials = Depends(security),
 ):
     user = await get_current_user(credentials.credentials)
-    if not user.get("role"):
+    role = user.get("role")
+    if not role:
+        # Best-effort role inference for migration/backward compatibility
+        from app.database import get_database
+
+        db = get_database()
+        recruiter_profile = await db.recruiter_profiles.find_one({"user_id": user["id"]})
+        if recruiter_profile:
+            role = "recruiter"
+        else:
+            seeker_profile = await db.job_seeker_profiles.find_one({"user_id": user["id"]})
+            if seeker_profile:
+                role = "job_seeker"
+
+    if not role:
         raise HTTPException(status_code=400, detail="User role not set")
-        
-    return await get_user_conversations(user["id"], user["role"])
+
+    return await get_user_conversations(user["id"], role)
 
 
 @router.get("/messages/{conversation_id}", response_model=List[MessageResponse])
@@ -77,12 +91,9 @@ manager = ConnectionManager()
 
 @router.websocket("/ws/{conversation_id}")
 async def websocket_endpoint(websocket: WebSocket, conversation_id: str):
-    # In a production app, we would authenticate via a token in query params. 
-    # For prototype, we expect the first message to declare "auth" or just trust connection ID.
     await manager.connect(websocket, conversation_id)
     try:
         while True:
-            # We expect JSON payloads from the frontend: {"token": "...", "sender_type": "...", "text": "..."}
             data = await websocket.receive_json()
             
             # Save into MongoDB
@@ -96,12 +107,34 @@ async def websocket_endpoint(websocket: WebSocket, conversation_id: str):
             if data.get("sender_type") in ("job_seeker", "candidate"):
                 import asyncio
 
-                asyncio.create_task(
-                    trigger_recruiter_agent(conversation_id, reason="candidate_message")
-                )
+                async def _safe_trigger():
+                    try:
+                        await trigger_recruiter_agent(conversation_id, reason="candidate_message")
+                    except Exception as e:
+                        print(f"[WebSocket] Agent trigger failed (non-blocking): {e}")
+
+                asyncio.create_task(_safe_trigger())
             
             # Broadcast the full MessageResponse back to everyone in this room
-            await manager.broadcast_to_conversation(conversation_id, saved_msg)
+            try:
+                await manager.broadcast_to_conversation(conversation_id, saved_msg)
+            except Exception as e:
+                print(f"[WebSocket] Broadcast failed: {e}")
+                # Send a safe fallback
+                safe_msg = {
+                    "id": saved_msg.get("id", ""),
+                    "conversation_id": conversation_id,
+                    "sender_type": saved_msg.get("sender_type", "unknown"),
+                    "message": saved_msg.get("message", ""),
+                    "created_at": saved_msg.get("created_at", ""),
+                }
+                try:
+                    await manager.broadcast_to_conversation(conversation_id, safe_msg)
+                except Exception:
+                    pass
             
     except WebSocketDisconnect:
+        manager.disconnect(websocket, conversation_id)
+    except Exception as e:
+        print(f"[WebSocket] Unexpected error: {e}")
         manager.disconnect(websocket, conversation_id)

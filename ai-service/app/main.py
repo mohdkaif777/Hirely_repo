@@ -123,9 +123,14 @@ async def find_matches(req: FindMatchesRequest):
     try:
         if req.job_id and req.job_data:
             # Find candidates for this job
-            matches = matching_service.find_matches_for_job(
-                req.job_id, req.job_data, req.top_k
-            )
+            if req.candidate_profiles:
+                matches = matching_service.find_matches_for_job_hybrid(
+                    req.job_id, req.job_data, req.candidate_profiles, req.top_k
+                )
+            else:
+                matches = matching_service.find_matches_for_job(
+                    req.job_id, req.job_data, req.top_k
+                )
             return {"matches": matches, "total": len(matches), "type": "candidates_for_job"}
 
         elif req.candidate_id and req.candidate_data:

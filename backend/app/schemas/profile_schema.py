@@ -1,5 +1,20 @@
 from typing import List, Optional
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
+from enum import Enum
+
+
+class JobTypePreference(str, Enum):
+    FULL_TIME = "Full Time"
+    PART_TIME = "Part Time"
+    INTERNSHIP = "Internship"
+    REMOTE = "Remote"
+
+
+class Project(BaseModel):
+    title: str
+    description: str
+    tech_stack: List[str] = []
+    project_url: Optional[str] = ""
 
 
 class JobSeekerProfileCreate(BaseModel):
@@ -11,6 +26,9 @@ class JobSeekerProfileCreate(BaseModel):
     preferred_roles: List[str] = []
     expected_salary: Optional[str] = ""
     resume_url: Optional[str] = ""
+    education: Optional[str] = ""
+    projects: List[Project] = []
+    job_type_preference: Optional[JobTypePreference] = None
 
 
 class JobSeekerProfileUpdate(BaseModel):
@@ -22,6 +40,9 @@ class JobSeekerProfileUpdate(BaseModel):
     preferred_roles: Optional[List[str]] = None
     expected_salary: Optional[str] = None
     resume_url: Optional[str] = None
+    education: Optional[str] = None
+    projects: Optional[List[Project]] = None
+    job_type_preference: Optional[JobTypePreference] = None
 
 
 class JobSeekerProfileResponse(BaseModel):
@@ -35,4 +56,8 @@ class JobSeekerProfileResponse(BaseModel):
     preferred_roles: List[str]
     expected_salary: str
     resume_url: str
+    education: str
+    projects: List[Project]
+    job_type_preference: Optional[JobTypePreference] = None
     created_at: str
+    updated_at: Optional[str] = None

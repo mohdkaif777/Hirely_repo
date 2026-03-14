@@ -31,6 +31,8 @@ export default function CompanyProfilePage() {
     company_name: "",
     industry: "",
     company_size: "",
+    website: "",
+    gst_number: "",
   });
 
   useEffect(() => {
@@ -45,6 +47,8 @@ export default function CompanyProfilePage() {
             company_name: data.company_name || "",
             industry: data.industry || "",
             company_size: data.company_size || "",
+            website: data.website || "",
+            gst_number: data.gst_number || "",
           });
         }
       } catch (err: any) {
@@ -132,6 +136,20 @@ export default function CompanyProfilePage() {
                 </div>
               )}
             </div>
+            {formData.website && (
+              <div className="flex flex-col space-y-1 p-4 rounded-lg bg-muted/30 border border-muted">
+                <span className="text-xs text-muted-foreground font-medium uppercase tracking-wider">Website</span>
+                <a href={formData.website} target="_blank" rel="noreferrer" className="font-semibold text-primary hover:underline">
+                  {formData.website}
+                </a>
+              </div>
+            )}
+            {formData.gst_number && (
+              <div className="flex flex-col space-y-1 p-4 rounded-lg bg-muted/30 border border-muted">
+                <span className="text-xs text-muted-foreground font-medium uppercase tracking-wider">GST Number</span>
+                <span className="font-semibold text-foreground">{formData.gst_number}</span>
+              </div>
+            )}
           </CardContent>
           <CardFooter className="pt-4 border-t bg-muted/10 gap-3">
             <Link href="/dashboard/post-job" className="w-full">
@@ -177,7 +195,17 @@ export default function CompanyProfilePage() {
 
             <div className="space-y-2">
               <Label htmlFor="company_size">Company Size</Label>
-              <Input id="company_size" name="company_size" placeholder="e.g. 1-10, 50-200" value={formData.company_size} onChange={handleChange} />
+              <Input id="company_size" name="company_size" placeholder="e.g. 1-10, 11-50, 51-200" value={formData.company_size} onChange={handleChange} />
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="website">Website</Label>
+              <Input id="website" name="website" type="url" placeholder="https://example.com" value={formData.website} onChange={handleChange} />
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="gst_number">GST Number (optional)</Label>
+              <Input id="gst_number" name="gst_number" placeholder="e.g. 22AAAAA0000A1ZV" value={formData.gst_number} onChange={handleChange} />
             </div>
 
           </CardContent>

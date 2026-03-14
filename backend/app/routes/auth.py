@@ -23,7 +23,9 @@ security = HTTPBearer()
 
 @router.post("/signup", response_model=UserResponse)
 async def signup(data: UserSignup):
-    user = await signup_user(data.email, data.password)
+    role = getattr(data, "role", None)
+    role_value = role.value if role is not None else None
+    user = await signup_user(data.email, data.password, role_value)
     return user
 
 

@@ -21,6 +21,7 @@ async def create_recruiter_profile(user_id: str, data: dict) -> dict:
         "user_id": user_id,
         **data,
         "created_at": datetime.utcnow(),
+        "updated_at": datetime.utcnow(),
     }
     result = await db.recruiter_profiles.insert_one(profile_doc)
     profile_doc["_id"] = result.inserted_id
@@ -47,6 +48,7 @@ async def update_recruiter_profile(user_id: str, data: dict) -> dict:
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="No fields to update",
         )
+    update_data["updated_at"] = datetime.utcnow()
 
     result = await db.recruiter_profiles.find_one_and_update(
         {"user_id": user_id},

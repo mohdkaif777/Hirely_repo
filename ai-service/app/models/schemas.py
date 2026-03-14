@@ -29,13 +29,20 @@ class FindMatchesRequest(BaseModel):
     candidate_id: Optional[str] = None
     job_data: Optional[dict] = None
     candidate_data: Optional[dict] = None
+    candidate_profiles: Optional[list[dict]] = None
     top_k: int = 10
 
 
 class MatchResult(BaseModel):
     candidate_id: Optional[str] = None
     job_id: Optional[str] = None
-    score: float
+    score: Optional[float] = None
+    final_score: Optional[float] = None
+    semantic_similarity: Optional[float] = None
+    skill_overlap: Optional[float] = None
+    project_relevance: Optional[float] = None
+    job_type_match: Optional[float] = None
+    experience_match: Optional[float] = None
 
 
 class VectorResponse(BaseModel):

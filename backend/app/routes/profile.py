@@ -27,7 +27,7 @@ async def create_profile(
     return profile
 
 
-@router.get("/", response_model=JobSeekerProfileResponse)
+@router.get("/me", response_model=JobSeekerProfileResponse)
 async def get_profile(
     credentials: HTTPAuthorizationCredentials = Depends(security),
 ):

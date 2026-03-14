@@ -1,4 +1,5 @@
 from datetime import datetime, timezone
+from typing import Optional
 from bson import ObjectId
 from app.database import get_database
 
@@ -25,6 +26,7 @@ async def get_or_create_conversation(job_id: str, job_seeker_id: str, recruiter_
     }
     
     result = await db.conversations.insert_one(conv)
+    conv.pop("_id", None)  # Remove ObjectId — not JSON serializable
     conv["id"] = str(result.inserted_id)
     return conv
 
@@ -61,8 +63,25 @@ async def get_user_conversations(user_id: str, role: str):
             c["last_message"] = last_msg["message"]
             c["last_message_time"] = last_msg["created_at"]
             
+        # 4. Agent Status from agent_conversations
+        agent_state = await db.agent_conversations.find_one({"conversation_id": c["id"]})
+        c["agent_status"] = agent_state.get("status", "new") if agent_state else "new"
+
+        # 5. Match data (score, rank, status) from matches collection
+        match_data = await db.matches.find_one({
+            "job_id": c["job_id"],
+            "candidate_id": c["job_seeker_id"],
+        })
+        if match_data:
+            c["match_score"] = match_data.get("score")
+            c["match_rank"] = match_data.get("rank")
+            c["match_status"] = match_data.get("status")
+
         result.append(c)
-        
+    
+    # Sort by match score (highest first) for ranked display
+    result.sort(key=lambda x: x.get("match_score") or 0, reverse=True)
+    
     return result
 
 async def get_messages(conversation_id: str):
@@ -75,15 +94,17 @@ async def get_messages(conversation_id: str):
         
     return messages
 
-async def save_message(conversation_id: str, sender_type: str, message: str):
+async def save_message(conversation_id: str, sender_type: str, message: str, metadata: Optional[dict] = None):
     db = get_database()
     msg = {
         "conversation_id": conversation_id,
         "sender_type": sender_type,
         "message": message,
+        "metadata": metadata,
         "created_at": datetime.now(timezone.utc).isoformat()
     }
     
     result = await db.messages.insert_one(msg)
+    msg.pop("_id", None)  # Remove ObjectId — it's not JSON serializable and crashes WebSocket
     msg["id"] = str(result.inserted_id)
     return msg

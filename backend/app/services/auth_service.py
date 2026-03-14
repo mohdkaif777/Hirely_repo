@@ -44,7 +44,7 @@ def decode_access_token(token: str) -> dict:
         )
 
 
-async def signup_user(email: str, password: str) -> dict:
+async def signup_user(email: str, password: str, role: Optional[str] = None) -> dict:
     db = get_database()
     existing = await db.users.find_one({"email": email})
     if existing:
@@ -56,7 +56,7 @@ async def signup_user(email: str, password: str) -> dict:
     user_doc = {
         "email": email,
         "password": hash_password(password),
-        "role": None,
+        "role": role,
         "created_at": datetime.utcnow(),
     }
     result = await db.users.insert_one(user_doc)
@@ -66,14 +66,37 @@ async def signup_user(email: str, password: str) -> dict:
 
 async def login_user(email: str, password: str) -> dict:
     db = get_database()
+    email_clean = email.lower().strip()
+    
+    # Try exact match first, then clean match
     user = await db.users.find_one({"email": email})
-    if not user or not verify_password(password, user["password"]):
+    if not user:
+        user = await db.users.find_one({"email": email_clean})
+        
+    print(f"[DEBUG LOGIN] Attempting login for email: '{email}'. Cleaned: '{email_clean}'. User found: {bool(user)}")
+    
+    if not user:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Invalid email or password",
+        )
+        
+    try:
+        pw_match = verify_password(password.strip(), user["password"])
+        print(f"[DEBUG LOGIN] Password match result: {pw_match}")
+    except Exception as e:
+        print(f"[DEBUG LOGIN] BCrypt verification error: {e}")
+        pw_match = False
+        
+    if not pw_match:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Invalid email or password",
         )
 
-    token = create_access_token({"sub": str(user["_id"]), "email": user["email"]})
+    token = create_access_token(
+        {"sub": str(user["_id"]), "email": user["email"], "role": user.get("role")}
+    )
     return {
         "access_token": token,
         "token_type": "bearer",
@@ -101,7 +124,9 @@ async def google_login_user(email: str, name: str = None) -> dict:
         user_doc["_id"] = result.inserted_id
         user = user_doc
 
-    token = create_access_token({"sub": str(user["_id"]), "email": user["email"]})
+    token = create_access_token(
+        {"sub": str(user["_id"]), "email": user["email"], "role": user.get("role")}
+    )
     return {
         "access_token": token,
         "token_type": "bearer",
@@ -125,7 +150,13 @@ async def get_current_user(token: str) -> dict:
             status_code=status.HTTP_404_NOT_FOUND,
             detail="User not found",
         )
-    return user_entity(user)
+
+    # Backward compatible: if token contains role and DB is missing role, keep DB as source of truth
+    # but allow token role to be reflected in response for downstream consumers.
+    ent = user_entity(user)
+    if payload.get("role") and not ent.get("role"):
+        ent["role"] = payload.get("role")
+    return ent
 
 
 async def update_user_role(user_id: str, role: str) -> dict:
